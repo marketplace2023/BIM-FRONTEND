@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -84,10 +85,18 @@ export function Sidebar() {
     <aside className="flex flex-col w-60 min-h-screen border-r bg-white">
       {/* Logo */}
       <div className="flex items-center gap-2 px-4 py-4 border-b">
-        <div className="w-8 h-8 rounded-md bg-blue-600 flex items-center justify-center flex-shrink-0">
-          <span className="text-white font-bold text-xs">BIM</span>
+        <Image
+          src="/bim-dueck-mark.svg"
+          alt="BIM Dueck"
+          width={28}
+          height={26}
+          className="h-7 w-auto flex-shrink-0"
+          priority
+        />
+        <div className="min-w-0">
+          <p className="text-sm font-semibold leading-none text-zinc-900">BIM Dueck</p>
+          <p className="text-[11px] leading-none text-zinc-500 mt-1">Platform</p>
         </div>
-        <span className="font-semibold text-sm">BIM Platform</span>
       </div>
 
       {/* Nav */}

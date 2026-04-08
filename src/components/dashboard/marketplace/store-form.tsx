@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import Image from "next/image";
+import { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -8,9 +9,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { storesApi } from "@/lib/api/api";
+import { getApiErrorMessage } from "@/lib/api/error";
 import { nativeSelectClassName } from "@/lib/bim";
 import { getMarketplaceContext } from "@/lib/marketplace";
 import type { Store, User } from "@/types/marketplace";
+import { toast } from "sonner";
 
 const storeSchema = z.object({
   entity_type: z.enum([
@@ -25,6 +29,7 @@ const storeSchema = z.object({
   email: z.string().trim().optional(),
   phone: z.string().trim().optional(),
   website: z.string().trim().optional(),
+  logo_url: z.string().trim().optional(),
   description: z.string().trim().optional(),
   street: z.string().trim().optional(),
   city: z.string().trim().optional(),
@@ -59,6 +64,7 @@ function getDefaultValues(initialData?: Partial<Store>, user?: User | null): Sto
     email: initialData?.email ?? user?.email ?? "",
     phone: initialData?.phone ?? user?.phone ?? "",
     website: initialData?.website ?? "",
+    logo_url: initialData?.logo_url ?? "",
     description: initialData?.description ?? "",
     street: initialData?.street ?? "",
     city: initialData?.city ?? "",
@@ -96,6 +102,7 @@ export function StoreForm({
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<StoreFormValues>({
     resolver: zodResolver(storeSchema),
@@ -107,6 +114,29 @@ export function StoreForm({
   }, [currentUser, initialData, reset]);
 
   const entityType = useWatch({ control, name: "entity_type" });
+  const logoUrl = useWatch({ control, name: "logo_url" });
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+
+  async function handleLogoUpload() {
+    if (!logoFile) {
+      toast.error("Selecciona una imagen para subir el logo");
+      return;
+    }
+
+    try {
+      setIsUploadingLogo(true);
+      const response = await storesApi.uploadLogo(logoFile);
+      const uploadedUrl = response.data.data.url;
+      setValue("logo_url", uploadedUrl, { shouldDirty: true });
+      setLogoFile(null);
+      toast.success("Logo subido correctamente");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "No se pudo subir el logo"));
+    } finally {
+      setIsUploadingLogo(false);
+    }
+  }
 
   async function submit(values: StoreFormValues) {
     await onSubmit({
@@ -116,6 +146,7 @@ export function StoreForm({
       email: optionalValue(values.email),
       phone: optionalValue(values.phone),
       website: optionalValue(values.website),
+      logo_url: optionalValue(values.logo_url),
       description: optionalValue(values.description),
       street: optionalValue(values.street),
       city: optionalValue(values.city),
@@ -182,6 +213,10 @@ export function StoreForm({
           <Input id="store-website" placeholder="https://empresa.com" {...register("website")} />
         </div>
         <div className="space-y-1 md:col-span-2">
+          <Label htmlFor="store-logo-url">Logo URL</Label>
+          <Input id="store-logo-url" placeholder="https://..." {...register("logo_url")} />
+        </div>
+        <div className="space-y-1 md:col-span-2">
           <Label htmlFor="store-description">Descripción</Label>
           <Textarea id="store-description" placeholder="Qué ofrece esta tienda o servicio" {...register("description")} />
         </div>
@@ -204,6 +239,34 @@ export function StoreForm({
         <div className="space-y-1">
           <Label htmlFor="store-zip">Código postal</Label>
           <Input id="store-zip" placeholder="28001" {...register("zip")} />
+        </div>
+      </div>
+
+      <div className="rounded-xl border bg-zinc-50 p-4">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="space-y-3">
+            <div>
+              <p className="text-sm font-medium text-zinc-900">Logo comercial</p>
+              <p className="text-xs text-zinc-500">Sube una imagen real para reutilizarla en la ficha de tienda.</p>
+            </div>
+            <Input
+              type="file"
+              accept="image/*"
+              onChange={(event) => setLogoFile(event.target.files?.[0] ?? null)}
+            />
+            <Button type="button" size="sm" variant="outline" onClick={handleLogoUpload} disabled={isUploadingLogo}>
+              {isUploadingLogo ? "Subiendo..." : "Subir logo"}
+            </Button>
+          </div>
+          <div className="rounded-xl border bg-white p-3">
+            {logoUrl ? (
+              <Image src={logoUrl} alt="Logo de la tienda" width={120} height={120} className="h-24 w-24 rounded-lg object-cover" unoptimized />
+            ) : (
+              <div className="flex h-24 w-24 items-center justify-center rounded-lg bg-zinc-100 text-xs text-zinc-400">
+                Sin logo
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

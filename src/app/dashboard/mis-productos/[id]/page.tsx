@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Trash2 } from "lucide-react";
+import { ArrowLeft, ExternalLink, Globe2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Breadcrumbs } from "@/components/dashboard/common/breadcrumbs";
 import { PageHeader } from "@/components/dashboard/bim/page-header";
@@ -32,6 +32,11 @@ export default function ProductoDetailPage() {
   });
 
   const managedStore = resolveManagedStore(storesQuery.data ?? [], user);
+  const managedStoreQuery = useQuery({
+    queryKey: ["managed-store-summary", managedStore?.id],
+    queryFn: () => storesApi.getById(managedStore!.id).then((response) => response.data),
+    enabled: Boolean(managedStore?.id),
+  });
 
   const productQuery = useQuery({
     queryKey: ["marketplace-product", productId],
@@ -65,6 +70,8 @@ export default function ProductoDetailPage() {
   });
 
   const product = productQuery.data;
+  const store = managedStoreQuery.data;
+  const isStorePublished = store?.x_verification_status === "published";
 
   if (productQuery.isLoading) {
     return <div className="animate-pulse h-48 rounded-2xl bg-zinc-100" />;
@@ -121,11 +128,31 @@ export default function ProductoDetailPage() {
               <Badge className={product.is_published === 1 ? "border-0 bg-green-100 text-green-700" : "border-0 bg-zinc-100 text-zinc-700"}>
                 {product.is_published === 1 ? "Publicado" : "Borrador"}
               </Badge>
+              <Badge className={product.is_published === 1 && isStorePublished ? "border-0 bg-blue-100 text-blue-700" : "border-0 bg-amber-100 text-amber-800"}>
+                {product.is_published === 1 && isStorePublished ? "Visible en marketplace" : "No visible públicamente"}
+              </Badge>
             </div>
             <p>Precio: {formatCurrency(product.list_price, product.currency_code)}</p>
             <p>SKU: {getProductSku(product)}</p>
             <p>Stock: {getProductStock(product)}</p>
             <p>Slug: {product.slug}</p>
+            {product.is_published === 1 && isStorePublished ? (
+              <Link href={`/marketplace/productos/${product.id}`}>
+                <Button variant="outline" size="sm">
+                  <ExternalLink className="mr-1 h-4 w-4" />
+                  Abrir vista pública
+                </Button>
+              </Link>
+            ) : (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                <div className="flex items-start gap-2">
+                  <Globe2 className="mt-0.5 h-4 w-4" />
+                  <p>
+                    Este producto solo será visible públicamente cuando esté publicado y la tienda también esté publicada.
+                  </p>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 

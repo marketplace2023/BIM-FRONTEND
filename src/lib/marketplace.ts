@@ -1,5 +1,11 @@
 import type { Category, Product, Store, User } from "@/types/marketplace";
 
+export type ProductSortOption =
+  | "recent"
+  | "name-asc"
+  | "price-asc"
+  | "price-desc";
+
 export function getMarketplaceContext(user?: User | null) {
   return {
     tenantId: user?.tenant_id ?? "",
@@ -95,4 +101,82 @@ export function filterCategories(categories: Category[], query: string) {
   if (!normalized) return categories;
 
   return categories.filter((category) => category.name.toLowerCase().includes(normalized));
+}
+
+export function getStoreTypeLabel(entityType?: string | null) {
+  switch (entityType) {
+    case "contractor":
+      return "Contratista";
+    case "education_provider":
+      return "Educación";
+    case "hardware_store":
+      return "Ferretería";
+    case "professional_firm":
+      return "Firma profesional";
+    case "seo_agency":
+      return "Agencia SEO";
+    default:
+      return "Marketplace";
+  }
+}
+
+export function getPrimaryProductImage(product?: Partial<Product> | null) {
+  const cover = product?.cover_image_url;
+  if (cover) return cover;
+
+  const firstGallery = Array.isArray(product?.images) ? product.images[0]?.image_url : undefined;
+  if (firstGallery) return firstGallery;
+
+  const galleryImages = Array.isArray(product?.x_attributes_json?.gallery_images)
+    ? product?.x_attributes_json?.gallery_images
+    : [];
+
+  const firstFromAttributes = galleryImages.find((image): image is string => typeof image === "string");
+  return firstFromAttributes ?? null;
+}
+
+export function getStoreCityLabel(store?: Partial<Store> | null) {
+  return [store?.city, store?.country].filter(Boolean).join(", ") || "Cobertura nacional";
+}
+
+export function getProductShortMeta(product?: Partial<Product> | null) {
+  const pieces = [product?.listing_type, product?.vertical_type].filter(Boolean);
+  return pieces.join(" · ") || "Producto publicado";
+}
+
+export function clampText(value?: string | null, max = 140) {
+  if (!value) return "";
+  return value.length > max ? `${value.slice(0, max).trim()}...` : value;
+}
+
+export function sortPublicProducts(products: Product[], sort: ProductSortOption) {
+  const sorted = [...products];
+
+  switch (sort) {
+    case "name-asc":
+      sorted.sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }));
+      break;
+    case "price-asc":
+      sorted.sort(
+        (a, b) =>
+          Number.parseFloat(String(a.list_price ?? 0)) - Number.parseFloat(String(b.list_price ?? 0)),
+      );
+      break;
+    case "price-desc":
+      sorted.sort(
+        (a, b) =>
+          Number.parseFloat(String(b.list_price ?? 0)) - Number.parseFloat(String(a.list_price ?? 0)),
+      );
+      break;
+    case "recent":
+    default:
+      sorted.sort(
+        (a, b) =>
+          new Date(b.updated_at ?? b.created_at ?? 0).getTime() -
+          new Date(a.updated_at ?? a.created_at ?? 0).getTime(),
+      );
+      break;
+  }
+
+  return sorted;
 }

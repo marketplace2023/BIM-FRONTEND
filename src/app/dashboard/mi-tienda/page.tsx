@@ -1,19 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
-import { Edit, Mail, MapPin, Package, Phone, Store, Tag } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Edit, ExternalLink, Mail, MapPin, Package, Phone, Store, Tag } from "lucide-react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/dashboard/bim/page-header";
 import { StatCard } from "@/components/dashboard/bim/stat-card";
 import { storesApi, productsApi } from "@/lib/api/api";
+import { getApiErrorMessage } from "@/lib/api/error";
 import { formatCurrency } from "@/lib/bim";
 import { getMarketplaceContext, getStoreAddress, getStoreStatusLabel, resolveManagedStore } from "@/lib/marketplace";
 import { useAuthStore } from "@/lib/stores/auth-store";
 
 export default function MiTiendaPage() {
+  const router = useRouter();
+  const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
   const context = getMarketplaceContext(user);
 
@@ -47,6 +52,26 @@ export default function MiTiendaPage() {
     (acc, product) => acc + Number.parseFloat(product.list_price ?? "0"),
     0,
   );
+
+  const publishMutation = useMutation({
+    mutationFn: ({ published }: { published: boolean }) =>
+      storesApi.update(managedStore!.id, {
+        x_verification_status: published ? "draft" : "published",
+      }),
+    onSuccess: (_response, variables) => {
+      toast.success("Estado público de la tienda actualizado");
+      queryClient.invalidateQueries({ queryKey: ["managed-store", managedStore?.id] });
+      queryClient.invalidateQueries({ queryKey: ["managed-stores"] });
+      if (!variables.published && managedStore?.id) {
+        router.push(`/marketplace?store=${managedStore.id}`);
+      }
+    },
+    onError: (error) => {
+      toast.error(getApiErrorMessage(error, "No se pudo actualizar la visibilidad de la tienda"));
+    },
+  });
+
+  const isStorePublished = store?.x_verification_status === "published";
 
   return (
     <div className="space-y-6">
@@ -104,6 +129,16 @@ export default function MiTiendaPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4 text-sm text-zinc-600">
+              {!isStorePublished && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                  Tu tienda sigue en borrador. Mientras no la publiques, no aparecerá en `home`, `marketplace` ni en el detalle público de productos.
+                </div>
+              )}
+              {isStorePublished && publishedCount === 0 && (
+                <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
+                  Tu tienda ya es pública, pero todavía no hay productos publicados. En `Mis Productos` usa el botón `Publicar` para que aparezcan en el marketplace.
+                </div>
+              )}
               <div>
                 <p className="text-xs uppercase tracking-wide text-zinc-400">Nombre</p>
                 <p className="font-medium text-zinc-900">{store.name}</p>
@@ -138,6 +173,23 @@ export default function MiTiendaPage() {
               <CardTitle className="text-base">Acciones rápidas</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
+              <Button
+                variant={isStorePublished ? "outline" : "default"}
+                className="w-full justify-between"
+                onClick={() => publishMutation.mutate({ published: Boolean(isStorePublished) })}
+                disabled={publishMutation.isPending}
+              >
+                {isStorePublished ? "Ocultar tienda del marketplace" : "Publicar tienda en marketplace"}
+                <Store className="h-4 w-4" />
+              </Button>
+              {isStorePublished && (
+                <Link href={`/marketplace/tiendas/${store.id}`} className="block">
+                  <Button variant="outline" className="w-full justify-between">
+                    Ver mi tienda pública
+                    <ExternalLink className="h-4 w-4" />
+                  </Button>
+                </Link>
+              )}
               <Link href="/dashboard/mis-productos" className="block">
                 <Button variant="outline" className="w-full justify-between">
                   Gestionar productos

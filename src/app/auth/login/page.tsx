@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+import Link from "next/link";
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -50,14 +52,21 @@ function LoginForm() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-zinc-50 p-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-2 w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center">
-            <span className="text-white font-bold text-sm">BIM</span>
+        <Card className="w-full max-w-sm">
+          <CardHeader className="text-center">
+          <div className="mx-auto mb-3 flex justify-center">
+            <Image
+              src="/bim-dueck-logo.svg"
+              alt="BIM Dueck"
+              width={220}
+              height={68}
+              className="h-14 w-auto"
+              priority
+            />
           </div>
           <CardTitle className="text-xl">Iniciar sesión</CardTitle>
           <p className="text-sm text-zinc-500">BIM Platform</p>
-        </CardHeader>
+          </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-1">
@@ -89,6 +98,12 @@ function LoginForm() {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Ingresando..." : "Ingresar"}
             </Button>
+            <p className="text-center text-sm text-zinc-500">
+              ¿No tienes cuenta?{" "}
+              <Link href="/auth/register" className="font-medium text-blue-600 hover:underline">
+                Registrarme
+              </Link>
+            </p>
           </form>
         </CardContent>
       </Card>

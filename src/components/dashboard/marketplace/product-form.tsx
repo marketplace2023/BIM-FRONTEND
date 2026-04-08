@@ -1,16 +1,21 @@
 "use client";
 
-import { useEffect } from "react";
+import Image from "next/image";
+import { useEffect, useMemo, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { productsApi } from "@/lib/api/api";
+import { getApiErrorMessage } from "@/lib/api/error";
 import { nativeSelectClassName } from "@/lib/bim";
 import { getDefaultListingType, getDefaultProductType } from "@/lib/marketplace";
 import type { Category, Product } from "@/types/marketplace";
+import { toast } from "sonner";
 
 const productSchema = z.object({
   categ_id: z.string().optional(),
@@ -85,6 +90,7 @@ export function ProductForm({
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
@@ -96,6 +102,66 @@ export function ProductForm({
   }, [entityType, initialData, reset]);
 
   const verticalType = useWatch({ control, name: "vertical_type" });
+  const coverImageUrl = useWatch({ control, name: "cover_image_url" });
+  const initialGallery = useMemo(
+    () =>
+      (initialData?.images ?? []).map((image) => image.image_url).filter(Boolean) as string[] ??
+      [],
+    [initialData?.images],
+  );
+  const [galleryImages, setGalleryImages] = useState<string[]>(initialGallery);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
+
+  useEffect(() => {
+    setGalleryImages(initialGallery);
+  }, [initialGallery]);
+
+  async function handleImageUpload() {
+    if (selectedFiles.length === 0) {
+      toast.error("Selecciona al menos una imagen para subir");
+      return;
+    }
+
+    try {
+      setIsUploadingImages(true);
+      const response = await productsApi.uploadImages(selectedFiles);
+      const uploadedUrls = response.data.data.map((item) => item.url);
+      setGalleryImages((current) => {
+        const merged = [...current, ...uploadedUrls].filter(
+          (value, index, array) => array.indexOf(value) === index,
+        );
+
+        if (!coverImageUrl && merged[0]) {
+          setValue("cover_image_url", merged[0], { shouldDirty: true });
+        }
+
+        return merged;
+      });
+      setSelectedFiles([]);
+      toast.success("Imágenes subidas correctamente");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "No se pudieron subir las imágenes"));
+    } finally {
+      setIsUploadingImages(false);
+    }
+  }
+
+  function moveImage(imageUrl: string, direction: "left" | "right") {
+    setGalleryImages((current) => {
+      const index = current.indexOf(imageUrl);
+      if (index === -1) return current;
+
+      const targetIndex = direction === "left" ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= current.length) {
+        return current;
+      }
+
+      const next = [...current];
+      [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+      return next;
+    });
+  }
 
   async function submit(values: ProductFormValues) {
     await onSubmit({
@@ -111,6 +177,7 @@ export function ProductForm({
       x_attributes_json: {
         sku: optionalValue(values.sku),
         stock: Number.parseFloat(values.stock || "0") || 0,
+        gallery_images: galleryImages,
       },
       ...(values.vertical_type === "hardware_store"
         ? {
@@ -182,6 +249,77 @@ export function ProductForm({
         <div className="space-y-1 md:col-span-2">
           <Label htmlFor="product-description">Descripción</Label>
           <Textarea id="product-description" placeholder="Describe el producto o servicio" {...register("description_sale")} />
+        </div>
+      </div>
+
+      <div className="rounded-xl border bg-zinc-50 p-4">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="space-y-3">
+            <div>
+              <p className="text-sm font-medium text-zinc-900">Imágenes del producto</p>
+              <p className="text-xs text-zinc-500">Sube varias imágenes y selecciona una como portada.</p>
+            </div>
+            <Input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={(event) => setSelectedFiles(Array.from(event.target.files ?? []))}
+            />
+            <Button type="button" size="sm" variant="outline" onClick={handleImageUpload} disabled={isUploadingImages}>
+              {isUploadingImages ? "Subiendo..." : "Subir imágenes"}
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {(galleryImages.length > 0 ? galleryImages : coverImageUrl ? [coverImageUrl] : []).map((imageUrl) => (
+              <div key={imageUrl} className="rounded-xl border bg-white p-2">
+                <Image src={imageUrl} alt="Imagen del producto" width={120} height={120} className="h-24 w-24 rounded-lg object-cover" unoptimized />
+                <div className="mt-2 flex flex-col gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={coverImageUrl === imageUrl ? "default" : "outline"}
+                    onClick={() => setValue("cover_image_url", imageUrl, { shouldDirty: true })}
+                  >
+                    {coverImageUrl === imageUrl ? "Portada" : "Usar portada"}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => moveImage(imageUrl, "left")}
+                    disabled={galleryImages.indexOf(imageUrl) <= 0}
+                  >
+                    <ArrowLeft className="mr-1 h-4 w-4" />
+                    Subir
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => moveImage(imageUrl, "right")}
+                    disabled={galleryImages.indexOf(imageUrl) === -1 || galleryImages.indexOf(imageUrl) >= galleryImages.length - 1}
+                  >
+                    Bajar
+                    <ArrowRight className="ml-1 h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      const next = galleryImages.filter((item) => item !== imageUrl);
+                      setGalleryImages(next);
+                      if (coverImageUrl === imageUrl) {
+                        setValue("cover_image_url", next[0] ?? "", { shouldDirty: true });
+                      }
+                    }}
+                  >
+                    Quitar
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 

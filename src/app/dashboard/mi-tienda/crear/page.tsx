@@ -20,9 +20,10 @@ export default function CrearTiendaPage() {
 
   const createMutation = useMutation({
     mutationFn: (payload: Record<string, unknown>) => storesApi.create(payload),
-    onSuccess: () => {
-      toast.success("Tienda creada correctamente");
-      router.push("/dashboard/mi-tienda");
+    onSuccess: async (response) => {
+      await storesApi.update(response.data.id, { x_verification_status: "published" });
+      toast.success("Tienda creada y publicada correctamente");
+      router.push(`/marketplace?store=${response.data.id}`);
     },
     onError: (error) => toast.error(getApiErrorMessage(error, "No se pudo crear la tienda")),
   });

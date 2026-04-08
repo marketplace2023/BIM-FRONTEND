@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Edit, Package, Plus, Search, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { Edit, ExternalLink, Globe2, Package, Plus, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Breadcrumbs } from "@/components/dashboard/common/breadcrumbs";
 import { PageHeader } from "@/components/dashboard/bim/page-header";
@@ -32,6 +33,11 @@ export default function MisProductosPage() {
   });
 
   const managedStore = resolveManagedStore(storesQuery.data ?? [], user);
+  const managedStoreQuery = useQuery({
+    queryKey: ["managed-store-summary", managedStore?.id],
+    queryFn: () => storesApi.getById(managedStore!.id).then((response) => response.data),
+    enabled: Boolean(managedStore?.id),
+  });
 
   const productsQuery = useQuery({
     queryKey: ["my-products", managedStore?.id],
@@ -70,6 +76,8 @@ export default function MisProductosPage() {
 
   const products = productsQuery.data ?? [];
   const filteredProducts = filterStoreProducts(products, query);
+  const store = managedStoreQuery.data;
+  const isStorePublished = store?.x_verification_status === "published";
 
   if (!managedStore && !storesQuery.isLoading) {
     return (
@@ -112,6 +120,25 @@ export default function MisProductosPage() {
         <StatCard title="Con stock" value={String(products.filter((item) => getProductStock(item) > 0).length)} description="Inventario positivo" icon={Search} />
       </div>
 
+      {!isStorePublished && managedStore && (
+        <Card>
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 py-5 text-sm text-amber-800">
+            <div className="flex items-start gap-3">
+              <Globe2 className="mt-0.5 h-5 w-5" />
+              <div>
+                <p className="font-medium text-amber-950">Tu tienda aún no es pública</p>
+                <p>
+                  Aunque publiques productos, no se verán en el marketplace hasta publicar primero la tienda desde `Mi Tienda`.
+                </p>
+              </div>
+            </div>
+            <Link href="/dashboard/mi-tienda">
+              <Button variant="outline" size="sm">Ir a Mi Tienda</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Catálogo gestionado</CardTitle>
@@ -133,6 +160,9 @@ export default function MisProductosPage() {
                     <Badge className={product.is_published === 1 ? "border-0 bg-green-100 text-green-700" : "border-0 bg-zinc-100 text-zinc-700"}>
                       {product.is_published === 1 ? "Publicado" : "Borrador"}
                     </Badge>
+                    <Badge className={product.is_published === 1 && isStorePublished ? "border-0 bg-blue-100 text-blue-700" : "border-0 bg-amber-100 text-amber-800"}>
+                      {product.is_published === 1 && isStorePublished ? "Visible en marketplace" : "No visible públicamente"}
+                    </Badge>
                   </div>
                   <p className="text-sm text-zinc-500">{product.description_sale ?? "Sin descripción comercial"}</p>
                   <div className="flex flex-wrap gap-3 text-xs text-zinc-500">
@@ -146,6 +176,14 @@ export default function MisProductosPage() {
                     <Edit className="mr-1 h-4 w-4" />
                     Editar
                   </Button>
+                  {product.is_published === 1 && isStorePublished && (
+                    <Link href={`/marketplace/productos/${product.id}`}>
+                      <Button variant="outline" size="sm">
+                        <ExternalLink className="mr-1 h-4 w-4" />
+                        Ver público
+                      </Button>
+                    </Link>
+                  )}
                   <Button
                     variant="outline"
                     size="sm"

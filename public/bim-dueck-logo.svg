@@ -1,0 +1,12 @@
+<svg width="500" height="180" viewBox="0 0 500 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g transform="translate(18 10)">
+    <path d="M0 0H32C48.5685 0 62 13.4315 62 30V130C62 146.569 48.5685 160 32 160H0V0Z" fill="#2F67E7"/>
+    <path d="M72 0H98C137.765 0 170 32.2355 170 72V86H144C104.235 86 72 53.7645 72 14V0Z" fill="#2F67E7"/>
+    <path d="M72 80H94C110.569 80 124 93.4315 124 110C124 126.569 110.569 140 94 140H72V80Z" fill="#111111"/>
+    <path d="M170 86H144C104.235 86 72 118.235 72 158V160H98C137.765 160 170 127.765 170 88V86Z" fill="#111111"/>
+  </g>
+  <g fill="#111111" font-family="Arial, Helvetica, sans-serif">
+    <text x="215" y="92" font-size="78" font-weight="700" letter-spacing="6">BIM</text>
+    <text x="217" y="142" font-size="36" font-weight="500" letter-spacing="14">DUECK</text>
+  </g>
+</svg>

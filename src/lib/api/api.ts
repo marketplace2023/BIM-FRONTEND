@@ -29,10 +29,20 @@ export const authApi = {
   me: () => api.get<AuthResponse["user"]>("/auth/me"),
 
   register: (data: {
+    username: string;
     name: string;
     email: string;
     password: string;
+    role: "consumer" | "store";
+    entity_type?:
+      | "contractor"
+      | "education_provider"
+      | "hardware_store"
+      | "professional_firm"
+      | "seo_agency";
     phone?: string;
+    city?: string;
+    country?: string;
   }) => api.post<AuthResponse>("/auth/register", data),
 };
 
@@ -53,12 +63,41 @@ export const storesApi = {
   },
 };
 
+export const publicStoresApi = {
+  getAll: (params?: Record<string, unknown>) =>
+    api.get<PaginatedResponse<Store>>("/stores/public", { params }),
+  getById: (id: string) => api.get<Store>(`/stores/public/${id}`),
+  getProducts: (id: string, params?: Record<string, unknown>) =>
+    api.get<PaginatedResponse<Product>>(`/stores/public/${id}/products`, { params }),
+  getPaymentMethods: (id: string) =>
+    api.get<StorePaymentMethod[]>(`/stores/public/${id}/payment-methods`),
+};
+
+export const publicIntentsApi = {
+  createProductLead: (data: {
+    product_tmpl_id: string;
+    buyer_name: string;
+    buyer_email: string;
+    buyer_phone?: string;
+    company?: string;
+    city?: string;
+    country?: string;
+    qty?: number;
+    message?: string;
+  }) =>
+    api.post<{ id: string; status: string; message: string }>(
+      "/public/intents/product-lead",
+      data,
+    ),
+};
+
 export const productsApi = {
   getMyProducts: (params?: Record<string, unknown>) =>
     api.get<PaginatedResponse<Product>>("/products", { params }),
   getAll: (params?: Record<string, unknown>) =>
     api.get<PaginatedResponse<Product>>("/products", { params }),
   getById: (id: string) => api.get<Product>(`/products/${id}`),
+  getPublicById: (id: string) => api.get<Product>(`/products/public/${id}`),
   create: (data: Record<string, unknown>, storeContextId?: string) =>
     api.post<Product>("/products", data, getStoreContextHeaders(storeContextId)),
   update: (id: string, data: Record<string, unknown>, storeContextId?: string) =>
@@ -86,9 +125,20 @@ export const categoriesApi = {
 export const ordersApi = {
   getMyOrders: (params?: Record<string, unknown>) =>
     api.get<PaginatedResponse<Order>>("/orders", { params }),
+  getStoreOrders: (params?: Record<string, unknown>, storeContextId?: string) =>
+    api.get<PaginatedResponse<Order>>("/orders/store", {
+      params,
+      ...(getStoreContextHeaders(storeContextId) ?? {}),
+    }),
+  getStoreById: (id: string, storeContextId?: string) =>
+    api.get<Order>(`/orders/store/${id}`, getStoreContextHeaders(storeContextId)),
   getById: (id: string) => api.get<Order>(`/orders/${id}`),
   updateStatus: (id: string, status: string) =>
     api.patch<Order>(`/orders/${id}/status`, { status }),
+  updateStoreStatus: (id: string, status: string, storeContextId?: string) =>
+    api.patch<Order>(`/orders/store/${id}/status`, { status }, getStoreContextHeaders(storeContextId)),
+  updatePaymentStatus: (id: string, payment_status: string, storeContextId?: string) =>
+    api.patch<Order>(`/orders/${id}/payment-status`, { payment_status }, getStoreContextHeaders(storeContextId)),
 };
 
 export const paymentMethodsApi = {

@@ -115,9 +115,25 @@ export interface Product {
 
 export interface Order {
   id: string;
-  code?: string;
+  order_number?: string;
   status: string;
-  total?: string | number;
+  payment_status?: string;
+  currency_code?: string;
+  amount_total?: string | number;
+  amount_untaxed?: string | number;
+  amount_tax?: string | number;
+  payment_reference?: string | null;
+  payment_proof_url?: string | null;
+  payment_notes?: string | null;
+  paid_at?: string | null;
+  validated_at?: string | null;
+  lines?: Array<{
+    id: string;
+    name: string;
+    qty: string;
+    price_unit: string;
+    subtotal: string;
+  }>;
   created_at?: string;
 }
 
